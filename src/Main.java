@@ -1,94 +1,78 @@
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
+import java.text.DecimalFormat;
+import java.text.DecimalFormatSymbols;
 import java.util.*;
 
 public class Main {
-    private static final int ROZMIAR_POPULACJI = 100;
-    private static final int WARUNEK_STOPU = 10;
+    private static final int ROZMIAR_POPULACJI = 10;
+    private static final int WARUNEK_STOPU = 50000;
+    private static final DecimalFormat DF = new DecimalFormat("0.000", new DecimalFormatSymbols(new Locale("pl", "PL")));// warunek stopu = ilość stworzonych populacji
     static Random rand = new Random();
     public static void main(String[] args) throws FileNotFoundException {
         long start = System.currentTimeMillis();
-        String plikWe = "input.txt";
-        String plikWy = "out.txt";
+        String plikWe = "kroD100_matrix.txt";
 
         int[][] odleglosci = wczytajPlik(plikWe);
 
-        // wyświetlanie tablicy odległości
-        for (int[] ints : odleglosci) {
-            for (int j = 0; j < odleglosci.length; j++) {
-                System.out.print(ints[j] + " ");
-            }
-            System.out.print("\n");
-        }
+        int[] sumBestGlobal = new int[(ROZMIAR_POPULACJI*WARUNEK_STOPU)];
+        int[] sumBestCurrent = new int[(ROZMIAR_POPULACJI*WARUNEK_STOPU)];
 
-        // Generowanie losowej populacji
-        List<int[]> populacja = generujPopulacje(odleglosci,ROZMIAR_POPULACJI);
+        for(int i = 0; i < 30; i++) {
+            // Generowanie losowej populacji
+            List<int[]> populacja = generujPopulacje(odleglosci, ROZMIAR_POPULACJI);
 
-        // Warunek stopu
-        for (int x = 0; x < WARUNEK_STOPU; x++) {
-            int ROZMIAR_TURNIEJU = 10;
-            //Krzyzowanie i Mutacja
-            List<int[]> poKrzyzowaniu = new ArrayList<>();
-            for (int i = 0; i < ROZMIAR_POPULACJI; i++) {
-                int[][] potomkowie = krzyzowaniePMX(turniej(populacja,odleglosci,ROZMIAR_TURNIEJU), turniej(populacja,odleglosci,ROZMIAR_TURNIEJU));
-                for (int[] ints : potomkowie) {
-                    poKrzyzowaniu.add((rand.nextDouble() <= 0.1) ? mutacja(ints) : ints);
+            int[] bestGlobal = populacja.getFirst();
+            int[] bestCurrent = populacja.getFirst();
+
+            for (int element = 0; element < ROZMIAR_POPULACJI; element++)
+            {
+                if (funkcjaDopasowanie(populacja.get(element), odleglosci) < funkcjaDopasowanie(bestCurrent, odleglosci)) {
+                    bestCurrent = populacja.get(element);
+                    bestGlobal = bestCurrent;
                 }
+                sumBestCurrent[element] += funkcjaDopasowanie(bestCurrent,odleglosci);
+                sumBestGlobal[element] += funkcjaDopasowanie(bestGlobal,odleglosci);
             }
 
-//            System.out.println("Po Krzyzowaniu");
-//
-//            for (int[] ints : poKrzyzowaniu) {
-//                for (int j = 0; j < odleglosci.length + 1; j++) {
-//                    System.out.print(ints[j] + ", ");
-//                }
-//                System.out.printf("%.3f", funkcjaDopasowanie(ints, odleglosci));
-//                System.out.print("\n");
-//            }
+            // Warunek stopu
+            for (int pokolenie = 1; pokolenie <= WARUNEK_STOPU-1; pokolenie++) {
+                int ROZMIAR_TURNIEJU = 10;
+                //Krzyzowanie i Mutacja
+                List<int[]> poKrzyzowaniu = new ArrayList<>();
+                bestCurrent = populacja.getFirst();
 
+                for (int x = 1; x <= ROZMIAR_POPULACJI; x++) {
+                    int[][] potomkowie = krzyzowaniePMX(turniej(populacja, odleglosci, ROZMIAR_TURNIEJU), turniej(populacja, odleglosci, ROZMIAR_TURNIEJU));
+                    for (int[] ints : potomkowie) {
+                        poKrzyzowaniu.add((rand.nextDouble() <= 0.01) ? mutacja(ints) : ints);
+                    }
+                    for (int[] ints : poKrzyzowaniu) {
+                        if (funkcjaDopasowanie(ints, odleglosci) < funkcjaDopasowanie(bestCurrent, odleglosci)) {
+                            bestCurrent = ints;
+                        }
+                    }
+                    if (funkcjaDopasowanie(bestCurrent, odleglosci) < funkcjaDopasowanie(bestGlobal, odleglosci)) {
+                        bestGlobal = bestCurrent;
+                    }
+                    sumBestCurrent[(x+(ROZMIAR_POPULACJI*(pokolenie)))-1] += funkcjaDopasowanie(bestCurrent,odleglosci);
+                    sumBestGlobal[(x+(ROZMIAR_POPULACJI*(pokolenie)))-1] += funkcjaDopasowanie(bestGlobal,odleglosci);
+                }
+
+                populacja.clear();
+                populacja = poKrzyzowaniu;
+            }
+//            wypiszBestGlobal(bestGlobal, odleglosci);
             populacja.clear();
-            populacja = poKrzyzowaniu;
         }
-
-        //wybranie najlepszego osobnika z wyjsciowej po krzyrzowaniu populacji
-        int[] najlepszy = populacja.getFirst();
-        for (int[] ints : populacja) {
-            if(funkcjaDopasowanie(ints,odleglosci)>funkcjaDopasowanie(najlepszy, odleglosci)) {
-                najlepszy = ints;
-            }
-        }
-
-        // wyświetlanie wyniku;
-        System.out.println("\n\n---WYNIK---");
-        System.out.println("liczba miast do odwiedzenia = "+(najlepszy.length-1));
-        System.out.print("kolejność: ");
-        for (int j : najlepszy) {
-            System.out.print((j + 1) + ", ");
-        }
-        int suma = 0;
-        for(int i = 0; i < odleglosci.length; i++) {
-            suma += odleglosci[najlepszy[i]][najlepszy[i+1]];
-        }
-        System.out.println("\nSuma: " + suma);
-
-        System.out.print("odległości: ");
-        for(int i = 0; i < odleglosci.length; i++) {
-            System.out.print( odleglosci[najlepszy[i]][najlepszy[i+1]]+", ");
-        }
-        System.out.print("\nodległość narastająco: ");
-        suma = 0;
-        for(int i = 0; i < odleglosci.length; i++) {
-            System.out.print(suma+", ");
-            suma += odleglosci[najlepszy[i]][najlepszy[i+1]];
-        }
-        System.out.print(suma+"\n");
+        eksportujWynikiWykresu(sumBestGlobal,sumBestCurrent);
 
         //eksport danych do pliku
-        eksportujDopliku(najlepszy,odleglosci,plikWy);
+//        eksportujDopliku(najlepszy,odleglosci,plikWy);
 
         // wyświetlanie czasu pracy algorytmu
-        System.out.printf("\n%.3f s",((float)(System.currentTimeMillis()-start)/60));
+        System.out.printf("\nCzas 30 wykonań %.3f s",((float)(System.currentTimeMillis()-start)/60));
     }
     private static int[][] wczytajPlik(String nazwaPliku) throws FileNotFoundException {
         Scanner sc = new Scanner(new File(nazwaPliku));
@@ -99,6 +83,36 @@ public class Main {
                 dist[i][j] = sc.nextInt();
         sc.close();
         return dist;
+    }
+    private static void eksportujWynikiWykresu(int[] sumBestGlobal, int[]sumBestCurrent) throws FileNotFoundException{
+        PrintWriter wynikWriter = new PrintWriter("wynik.txt");
+        for (int pok = 0; pok < sumBestGlobal.length; pok++) {
+            double avgCurr = (double) sumBestCurrent[pok] / 30;
+            double avgGlob = (double) sumBestGlobal[pok] / 30;
+            wynikWriter.println((pok+1) + ";" + DF.format(avgCurr) + ";" + DF.format(avgGlob));
+        }
+        wynikWriter.close();
+    }
+    private static void wypiszBestGlobal(int[] bestGlobal, int[][] odleglosci){
+        System.out.println("\n\n---WYNIK---");
+        System.out.println("liczba miast do odwiedzenia = "+(bestGlobal.length-1));
+        System.out.print("kolejność: ");
+        for (int j : bestGlobal) {
+            System.out.print((j + 1) + ", ");
+        }
+        System.out.println("\nSuma: "+funkcjaDopasowanie(bestGlobal,odleglosci));
+
+        System.out.print("odległości: ");
+        for(int i = 0; i < odleglosci.length; i++) {
+            System.out.print( odleglosci[bestGlobal[i]][bestGlobal[i+1]]+", ");
+        }
+        System.out.print("\nodległość narastająco: ");
+        int suma = 0;
+        for(int i = 0; i < odleglosci.length; i++) {
+            System.out.print(suma+", ");
+            suma += odleglosci[bestGlobal[i]][bestGlobal[i+1]];
+        }
+        System.out.print(suma+"\n");
     }
     private static void eksportujDopliku(int[] najlepszy, int[][] odleglosci, String nazwaPliku) throws FileNotFoundException {
         PrintWriter out = new PrintWriter(nazwaPliku);
@@ -127,7 +141,7 @@ public class Main {
         out.print(suma+"; ");
         out.close();
     }
-    public static List<int[]> generujPopulacje(int[][] odleglosci ,int rozmiar) {
+    private static List<int[]> generujPopulacje(int[][] odleglosci ,int rozmiar) {
         List<int[]> populacja = new ArrayList<>();
         for (int i = 0; i < rozmiar; i++) {
             int[] trasa = new int [odleglosci.length+1];
@@ -146,7 +160,7 @@ public class Main {
         }
         return populacja;
     }
-    public static boolean zawiera(int x, int[] tab) {
+    private static boolean zawiera(int x, int[] tab) {
         for (int j : tab) {
             if (j == x) {
                 return true;
@@ -154,14 +168,14 @@ public class Main {
         }
         return false;
     }
-    public static double funkcjaDopasowanie(int[] element, int[][] odleglosci) {
-        double dop = 0;
+    private static int funkcjaDopasowanie(int[] element, int[][] odleglosci) {
+        int dop = 0;
         for(int j = 0; j< odleglosci.length; j++){
             dop += odleglosci[element[j]][element[j+1]];
         }
-        return (1/dop)*1000000;
+        return dop;
     }
-    public static int[][] krzyzowaniePMX(int[] rodzic1, int[] rodzic2) {
+    private static int[][] krzyzowaniePMX(int[] rodzic1, int[] rodzic2) {
         int[][] potomkowie = new int[2][rodzic1.length];
 
         int n = rodzic1.length;
@@ -205,7 +219,7 @@ public class Main {
 
         return potomkowie;
     }
-    public static int powtorzenie(int[] tab){
+    private static int powtorzenie(int[] tab){
         for (int k = 0; k < tab.length-1; k++) {
             int pom = 0;
             for (int i = 0; i < tab.length-1; i++) {
@@ -219,7 +233,7 @@ public class Main {
         }
         return -1;
     }
-    public static int[] mutacja(int[] droga) {
+    private static int[] mutacja(int[] droga) {
         int[] value = droga.clone();
         int x = rand.nextInt(1,value.length-1);
         int y = rand.nextInt(1,value.length-1);
@@ -248,7 +262,7 @@ public class Main {
             }
             int[] najlepszy = turniej.getFirst();
             for (int[] ints : turniej) {
-                if (funkcjaDopasowanie(ints, odleglosci) > funkcjaDopasowanie(najlepszy, odleglosci)) {
+                if (funkcjaDopasowanie(ints, odleglosci) < funkcjaDopasowanie(najlepszy, odleglosci)) {
                     najlepszy = ints;
                 }
             }
