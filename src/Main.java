@@ -12,10 +12,8 @@ public class Main {
     static Random rand = new Random();
     public static void main(String[] args) throws FileNotFoundException {
         long start = System.currentTimeMillis();
-        String plikWe = "kroD100_matrix.txt";
-
+        String plikWe = "gr24_matrix.txt"; // <- nazwa pliku wejściowego
         int[][] odleglosci = wczytajPlik(plikWe);
-
         int[] sumBestGlobal = new int[(ROZMIAR_POPULACJI*WARUNEK_STOPU)];
         int[] sumBestCurrent = new int[(ROZMIAR_POPULACJI*WARUNEK_STOPU)];
 
@@ -35,7 +33,6 @@ public class Main {
                 sumBestCurrent[element] += funkcjaDopasowanie(bestCurrent,odleglosci);
                 sumBestGlobal[element] += funkcjaDopasowanie(bestGlobal,odleglosci);
             }
-
             // Warunek stopu
             for (int pokolenie = 1; pokolenie <= WARUNEK_STOPU-1; pokolenie++) {
                 int ROZMIAR_TURNIEJU = 10;
@@ -63,15 +60,9 @@ public class Main {
                 populacja.clear();
                 populacja = poKrzyzowaniu;
             }
-//            wypiszBestGlobal(bestGlobal, odleglosci);
             populacja.clear();
         }
         eksportujWynikiWykresu(sumBestGlobal,sumBestCurrent);
-
-        //eksport danych do pliku
-//        eksportujDopliku(najlepszy,odleglosci,plikWy);
-
-        // wyświetlanie czasu pracy algorytmu
         System.out.printf("\nCzas 30 wykonań %.3f s",((float)(System.currentTimeMillis()-start)/60));
     }
     private static int[][] wczytajPlik(String nazwaPliku) throws FileNotFoundException {
@@ -92,54 +83,6 @@ public class Main {
             wynikWriter.println((pok+1) + ";" + DF.format(avgCurr) + ";" + DF.format(avgGlob));
         }
         wynikWriter.close();
-    }
-    private static void wypiszBestGlobal(int[] bestGlobal, int[][] odleglosci){
-        System.out.println("\n\n---WYNIK---");
-        System.out.println("liczba miast do odwiedzenia = "+(bestGlobal.length-1));
-        System.out.print("kolejność: ");
-        for (int j : bestGlobal) {
-            System.out.print((j + 1) + ", ");
-        }
-        System.out.println("\nSuma: "+funkcjaDopasowanie(bestGlobal,odleglosci));
-
-        System.out.print("odległości: ");
-        for(int i = 0; i < odleglosci.length; i++) {
-            System.out.print( odleglosci[bestGlobal[i]][bestGlobal[i+1]]+", ");
-        }
-        System.out.print("\nodległość narastająco: ");
-        int suma = 0;
-        for(int i = 0; i < odleglosci.length; i++) {
-            System.out.print(suma+", ");
-            suma += odleglosci[bestGlobal[i]][bestGlobal[i+1]];
-        }
-        System.out.print(suma+"\n");
-    }
-    private static void eksportujDopliku(int[] najlepszy, int[][] odleglosci, String nazwaPliku) throws FileNotFoundException {
-        PrintWriter out = new PrintWriter(nazwaPliku);
-        //wypisanie ilości miast
-        out.print(najlepszy.length-1 + "; ");
-        int suma = 0;
-        //wypisanie kolejności odwiedzania miast
-        for(int j: najlepszy) {
-            out.print(j + 1 + "; ");
-        }
-        //wypisanie długości cyklu
-        for(int i = 0; i < odleglosci.length; i++) {
-            suma += odleglosci[najlepszy[i]][najlepszy[i+1]];
-        }
-        out.print(suma+"; ");
-        //wypisanie odległości między miastami
-        for(int i = 0; i < odleglosci.length; i++) {
-            out.print( odleglosci[najlepszy[i]][najlepszy[i+1]]+"; ");
-        }
-        //wypisanie odległości przebytej przez komiwojazera
-        suma = 0;
-        for(int i = 0; i < odleglosci.length; i++) {
-            out.print(suma+"; ");
-            suma += odleglosci[najlepszy[i]][najlepszy[i+1]];
-        }
-        out.print(suma+"; ");
-        out.close();
     }
     private static List<int[]> generujPopulacje(int[][] odleglosci ,int rozmiar) {
         List<int[]> populacja = new ArrayList<>();
